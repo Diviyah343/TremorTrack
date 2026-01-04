@@ -43,9 +43,6 @@ This project is intended for **screening, monitoring, and educational purposes o
 No external hardware or libraries required.
 
 ---
-
-##  Getting Started
-
-### 1. Clone the repository
+###  Clone the repository
 ```bash
 git clone https://github.com/Diviyah343/TremorTrack.git
