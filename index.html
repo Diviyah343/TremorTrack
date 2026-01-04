@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#ffffff">
+  <title>TremorTrack</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>TremorTrack</h1>
+    <nav>
+      <button data-target="home" class="active">Home</button>
+      <button data-target="check">Check Tremor</button>
+      <button data-target="document">Document Results</button>
+      <button data-target="visualize">Visualize Results</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="home" class="page">
+      <div class="hero">
+        <div class="hero-text">
+          <h2>TremorTrack</h2>
+          <p class="lead">Small tremors. Big daily challenges.</p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <svg width="220" height="140" viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
+            <rect x="0" y="0" width="220" height="140" rx="12" fill="#eef5ff"/>
+            <path d="M10 100 C40 40, 80 40, 110 100 C140 160, 180 60, 210 100" stroke="#2d6cdf" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="home-info">
+        <h3>Small tremors. Big daily challenges.</h3>
+        <p>Early signs of Parkinson’s often appear as small changes in hand movement and control. This platform offers a simple, software-based way to observe and visualize motor patterns. Subtle motor changes shouldn’t go unnoticed.</p>
+
+        <h4>Why This Matters</h4>
+        <p>Parkinson’s disease often begins with changes that are easy to overlook — mild tremors, reduced control, or slower movement. Timely awareness can help individuals seek medical guidance earlier and better understand changes in motor function over time.</p>
+
+        <h4>Our Approach</h4>
+        <p>We provide a non-invasive digital assessment using guided motor interaction tests.</p>
+        <ul class="approach">
+          <li>No hardware or wearables required</li>
+          <li>Works on standard devices</li>
+          <li>Minimal effort, no manual data entry</li>
+          <li>Movement patterns are automatically analyzed and visualized to highlight potential irregularities</li>
+        </ul>
+
+        <!-- Carousel showcasing tests -->
+        <div class="home-carousel">
+          <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Tests showcase" tabindex="0">
+            <div class="carousel-slides">
+              <figure class="carousel-slide" data-test="linetrace">
+                <img class="carousel-img" src="images/line-tracing.svg" alt="Line Tracing Test">
+                <figcaption><strong>Line Tracing</strong><div class="carousel-desc">Trace the line accurately and smoothly</div></figcaption>
+              </figure>
+
+              <figure class="carousel-slide" data-test="target">
+                <img class="carousel-img" src="images/target-touch.svg" alt="Target Touch Test">
+                <figcaption><strong>Target Touch</strong><div class="carousel-desc">Tap appearing targets quickly and accurately</div></figcaption>
+              </figure>
+
+              <figure class="carousel-slide" data-test="repetition">
+                <img class="carousel-img" src="images/timed-repetition.svg" alt="Timed Repetition Test">
+                <figcaption><strong>Timed Repetition</strong><div class="carousel-desc">Repeated circles measure consistency and speed</div></figcaption>
+              </figure>
+
+              <figure class="carousel-slide" data-test="tapping">
+                <img class="carousel-img" src="images/finger-tapping.svg" alt="Finger Tapping Test">
+                <figcaption><strong>Finger Tapping</strong><div class="carousel-desc">Alternating taps measure speed and rhythm</div></figcaption>
+              </figure>
+            </div>
+            <button class="carousel-prev" aria-label="Previous slide">‹</button>
+            <button class="carousel-next" aria-label="Next slide">›</button>
+            <div class="carousel-indicators" role="tablist" aria-hidden="false"></div>
+          </div>
+        </div>
+
+        <h4>Who It’s For</h4>
+        <ul class="who">
+          <li>Individuals noticing hand tremors or motor changes</li>
+          <li>Caregivers supporting neurological health</li>
+          <li>Students and researchers exploring digital health tools</li>
+        </ul>
+
+        <div class="disclaimer">
+          <strong>Disclaimer:</strong>
+          <p>This tool is intended for screening and motor symptom monitoring only. It is not a medical device and does not provide a clinical diagnosis. Please consult a qualified healthcare professional for medical advice.</p>
+        </div>
+
+        <div class="home-cta" style="margin-top:12px">
+          <button class="primary" data-target="check">Start a quick test</button>
+          <button class="outline" data-target="document">Document a Note</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="check" class="page hidden">
+      <h2>Check for Tremor</h2>
+      <p>Choose a short test below. Each test focuses on a different clinical sign (tremor, bradykinesia, stability, reaction). Results are summarized and can be saved.</p>
+
+      <div class="tests-nav" role="tablist" aria-label="Tests">
+        <button class="outline test-tab active" data-test="trace">Trace Test (Spiral)</button>
+        <button class="outline test-tab" data-test="tapping">Finger Tapping</button>
+        <button class="outline test-tab" data-test="hold">Hold-Still</button>
+        <button class="outline test-tab" data-test="linetrace">Line Tracing</button>
+        <button class="outline test-tab" data-test="target">Target Touch</button>
+        <button class="outline test-tab" data-test="repetition">Timed Repetition</button>
+      </div>
+
+      <div class="test-views">
+        <!-- Trace test (existing) -->
+        <div id="test-trace" class="test-view">
+          <h3>Trace Test</h3>
+          <p class="small">Trace the swirl in the canvas below. Accuracy is used to estimate tremor severity.</p>
+          <div class="canvas-wrap">
+            <canvas id="traceCanvas" width="360" height="360" aria-label="Tracing canvas"></canvas>
+          </div>
+          <div class="trace-controls" style="margin-top:10px">
+            <button id="startTraceBtn" class="primary">Start Trace</button>
+            <button id="clearTraceBtn" class="outline">Clear</button>
+            <button id="submitTraceBtn" class="primary" disabled>Submit Trace</button>
+          </div>
+          <div id="traceStatus" class="small" style="margin-top:8px">Ready</div>
+        </div>
+
+        <!-- Finger tapping -->
+        <div id="test-tapping" class="test-view">
+          <h3>Finger Tapping Test</h3>
+          <p class="small">Tap the left and right targets alternately as quickly and consistently as you can for <strong>15 seconds</strong>.</p>
+          <div class="tapping-area">
+            <button id="tapLeft" class="tap-zone">Left</button>
+            <button id="tapRight" class="tap-zone">Right</button>
+          </div>
+          <div class="tapping-controls">
+            <button id="startTapping" class="primary">Start 15s</button>
+            <button id="stopTapping" class="outline" disabled>Stop</button>
+            <div id="tappingTimer" class="small">Ready</div>
+          </div>
+          <div id="tappingResults" class="small" style="margin-top:8px"></div>
+        </div>
+
+        <!-- Hold still -->
+        <div id="test-hold" class="test-view">
+          <h3>Hold-Still (Postural)</h3>
+          <p class="small">Place and hold your finger/mouse on the dot for <strong>15 seconds</strong>. Keep it steady on the dot.</p>
+          <div class="hold-area">
+            <div id="holdDot" class="hold-dot" role="button" aria-label="Hold dot"></div>
+          </div>
+          <div id="holdStatus" class="small" style="margin-top:8px">Ready</div>
+          <div id="holdResults" class="small" style="margin-top:8px"></div>
+        </div>
+
+        <!-- Line tracing -->
+        <div id="test-linetrace" class="test-view">
+          <h3>Line Tracing Test</h3>
+          <p class="small">Trace the line below as precisely as possible.</p>
+          <div class="canvas-wrap">
+            <canvas id="lineCanvas" width="540" height="160" aria-label="Line trace canvas"></canvas>
+          </div>
+          <div class="line-controls">
+            <button id="startLine" class="primary">Start</button>
+            <button id="clearLine" class="outline">Clear</button>
+            <button id="submitLine" class="primary" disabled>Submit</button>
+          </div>
+          <div id="lineResults" class="small" style="margin-top:8px"></div>
+        </div>
+
+        <!-- Target touch -->
+        <div id="test-target" class="test-view">
+          <h3>Target Touch</h3>
+          <p class="small">Tap the targets that appear as fast as you can. 15 trials.</p>
+          <div class="target-area" id="targetArea"></div>
+          <div class="target-controls" style="margin-top:8px"><button id="startTarget" class="primary">Start</button> <div id="targetStatus" class="small">Ready</div></div>
+          <div id="targetResults" class="small" style="margin-top:8px"></div>
+        </div>
+
+        <!-- Timed repetition -->
+        <div id="test-repetition" class="test-view">
+          <h3>Timed Repetition Test</h3>
+          <p class="small">Draw circles repeatedly for <strong>20 seconds</strong>. Try to maintain shape and speed.</p>
+          <div class="canvas-wrap">
+            <canvas id="repCanvas" width="360" height="360" aria-label="Repetition canvas"></canvas>
+          </div>
+          <div class="rep-controls" style="margin-top:8px"><button id="startRep" class="primary">Start 20s</button> <button id="stopRep" class="outline" disabled>Stop</button></div>
+          <div id="repResults" class="small" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div id="result" class="result hidden">
+        <h3>Test Summary</h3>
+        <div id="summaryBox" class="small">Run a test to see its metrics here.</div>
+        <button id="saveCurrentBtn">Save Result</button>
+      </div>
+    </section>
+
+    <section id="document" class="page hidden">
+      <h2>Document Results</h2>
+      <form id="docForm">
+        <label>Title<br /><input id="docTitle" required /></label>
+        <label>Notes<br /><textarea id="docNotes"></textarea></label>
+        <label>Attach Result<br />
+          <select id="attachResult">
+            <option value="">(most recent)</option>
+          </select>
+        </label>
+        <div class="form-row" style="margin-top:10px">
+          <button type="submit" class="primary">Save Document</button>
+          <button type="button" id="discardAuto" class="outline small">Discard Auto Draft</button>
+        </div>
+      </form>
+
+      <div id="autoDocPreview" class="auto-doc small hidden" style="margin-top:12px"></div>
+
+      <h3>Saved Documents</h3>
+      <ul id="docsList" class="list"></ul>
+
+      <h3 style="margin-top:16px">Saved Sessions</h3>
+      <ul id="sessionsList" class="list"></ul>
+    </section>
+
+    <section id="visualize" class="page hidden">
+      <h2>Visualize Results</h2>
+      <div class="charts">
+        <div class="chart-card">
+          <h4>Amplitude by Session</h4>
+          <canvas id="ampChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h4>Dominant Frequency by Session</h4>
+          <canvas id="freqChart"></canvas>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="addSampleData">Add sample data</button>
+        <button id="clearData">Clear all saved data</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Not a medical device. For informational purposes only.</small>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>
