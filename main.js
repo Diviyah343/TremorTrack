@@ -1,10 +1,37 @@
 /* main.js - Tremor capture, analysis, storage, and charts */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Navigation
-  document.querySelectorAll('nav button').forEach(btn => {
+  // Navigation (only buttons with data-target are page links)
+  document.querySelectorAll('nav button[data-target]').forEach(btn => {
     btn.addEventListener('click', () => navigate(btn.dataset.target, btn));
   });
+
+  // Theme toggle: apply persisted theme or system preference and wire the toggle
+  const themeToggle = document.getElementById('themeToggle');
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    try{ localStorage.setItem('theme', theme); }catch(e){}
+    if (themeToggle){
+      themeToggle.setAttribute('aria-pressed', theme === 'dark');
+      const icon = document.getElementById('themeIcon');
+      if (icon) icon.src = theme === 'dark' ? 'images/theme-dark.svg' : 'images/theme-light.svg';
+      themeToggle.setAttribute('title', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#071022' : '#ffffff');
+  }
+
+  let savedTheme = null;
+  try{ savedTheme = localStorage.getItem('theme'); }catch(e){}
+  if (!savedTheme){ savedTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+  applyTheme(savedTheme);
+
+  if (themeToggle){
+    themeToggle.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  }
 
   // Elements
   const startBtn = document.getElementById('startBtn');
@@ -70,6 +97,8 @@ document.addEventListener('DOMContentLoaded', () => {
   clearDataBtn.addEventListener('click', clearAllData);
   docForm.addEventListener('submit', saveDocument);
 
+ 
+ 
   // Trace listeners
   startTraceBtn.addEventListener('click', () => {
     if (traceStatus) traceStatus.textContent = 'Trace started — follow the swirl';
@@ -79,15 +108,19 @@ document.addEventListener('DOMContentLoaded', () => {
   clearTraceBtn.addEventListener('click', () => { clearTraceCanvas(); generateSpiral(); drawSpiral(); if (traceStatus) traceStatus.textContent='Cleared'; traceHasStroke=false; submitTraceBtn.disabled=true; });
   submitTraceBtn.addEventListener('click', () => { if (!traceHasStroke) return alert('Please draw the swirl first'); evaluateTrace(); });
 
+ 
+ 
   // Test tab switching
   document.querySelectorAll('.test-tab').forEach(tb => tb.addEventListener('click', (ev)=>{
     const t = ev.currentTarget.dataset.test;
     document.querySelectorAll('.test-tab').forEach(x=>x.classList.remove('active'));
     ev.currentTarget.classList.add('active');
+    
     // New behavior: instead of hiding other tests, scroll the selected test into view
     const view = document.getElementById('test-' + t);
     if (view) {
       view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
       // Give it a subtle flash so the user sees the selection
       view.classList.add('flash'); setTimeout(()=> view.classList.remove('flash'), 700);
     }
@@ -95,6 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (t === 'linetrace') { generateLine(); drawLineGuide(); }
   }));
 
+ 
+ 
   // Pointer events on canvas
   traceCanvas.addEventListener('pointerdown', (e) => { if (!startTraceBtn) return; if (startTraceBtn.disabled) {};
     if (e.button !== 0) return; // left click only
@@ -102,6 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
     tracing = true; traceHasStroke=true; submitTraceBtn.disabled=false; tracePoints.push(pointFromEvent(e)); drawLinePoint(e);
   });
 
+  
+  
   // Finger tapping test
   const tapLeft = document.getElementById('tapLeft');
   const tapRight = document.getElementById('tapRight');
@@ -117,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function finishTapping(){ tappingActive=false; startTapping.disabled=false; stopTapping.disabled=true; tapLeft.disabled = true; tapRight.disabled = true; tappingTimer.textContent='Done';
     if (tappingTimerInterval) clearInterval(tappingTimerInterval); if (tappingTimeout) clearTimeout(tappingTimeout);
+    
     // compute metrics using only correct taps
     const correctTaps = tappingTaps.filter(t=>t.correct);
     if (correctTaps.length===0) { tappingResults.textContent=`No valid alternated taps recorded (wrong taps: ${tappingWrong})`; summaryBox.innerHTML = `Tapping: no valid data`; return; }
@@ -124,15 +162,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const tapsPerSec = correctTaps.length / totalTime;
     const intervals = []; for (let i=1;i<correctTaps.length;i++){ intervals.push((correctTaps[i].t - correctTaps[i-1].t)/1000); }
     const std = computeStd(intervals);
+    
     // speed decay: compare taps/sec first half vs second half
     const mid = Math.floor(correctTaps.length/2); const firstRate = mid>0 ? (mid / ((correctTaps[mid-1].t - correctTaps[0].t)/1000)) : tapsPerSec; const secondRate = (correctTaps.length-mid)>0 ? ((correctTaps.length-mid) / ((correctTaps[correctTaps.length-1].t - correctTaps[mid].t)/1000)) : tapsPerSec;
     const decay = Math.round((firstRate - secondRate) * 100)/100;
     tappingResults.innerHTML = `<strong>Taps/sec:</strong> ${tapsPerSec.toFixed(2)} • <strong>Std (s):</strong> ${std.toFixed(3)} • <strong>Decay:</strong> ${decay} • <strong>Wrong taps:</strong> ${tappingWrong}`;
+    
     // attach to currentResult
     currentResult = currentResult || { id:'r_'+Date.now(), date:new Date().toISOString() };
     currentResult.tapping = { taps: correctTaps.length, tapsPerSec, std, decay, wrong:tappingWrong, timestamps: correctTaps };
+    // summary fields for charts
+    currentResult.avgAmplitude = Math.min(1, std / 0.5);
+    currentResult.dominantFreq = tapsPerSec;
     summaryBox.innerHTML = `Tapping: ${tapsPerSec.toFixed(2)} t/s, irregularity ${std.toFixed(3)}, decay ${decay}`;
     createAutoDoc(currentResult); prefillDocumentForm(currentResult); refreshDocsUI();
+    // Preview on charts
+    previewResultOnCharts(currentResult);
   }
 
   startTapping && startTapping.addEventListener('click', ()=>{
@@ -168,14 +213,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function startHold(){ if (!holdDot) return; holdActive=true; holdSamples=[]; holdStatus.textContent='Holding...';
     const startTime = Date.now();
     holdTimer = setTimeout(()=> stopHold(), 15000);
+    
     // sample at 40Hz
     const r = holdDot.getBoundingClientRect(); const center = { x: r.left + r.width/2, y: r.top + r.height/2 };
     const sam = setInterval(()=>{ if (!holdActive) { clearInterval(sam); return; } const now = Date.now(); const pos = lastPointerPos || center; const dx = pos.x - center.x, dy = pos.y - center.y; holdSamples.push({t:now, dx, dy, mag: Math.hypot(dx,dy)}); }, 25);
+    
     // temporarily guide pointer capture on holdDot
   }
   function stopHold(){ holdActive=false; if (holdTimer) clearTimeout(holdTimer); holdStatus.textContent='Done';
     if (holdSamples.length===0){ holdResults.textContent='No hold samples'; return; }
     const meanDrift = holdSamples.reduce((s,v)=>s+v.mag,0)/holdSamples.length;
+    
     // compute dominant tremor frequency from magnitude series
     const mags = holdSamples.map(s=>s.mag); const times = holdSamples.map(s=>s.t);
     const {dominantFreq} = computeDominantFrequency(mags, times);
@@ -183,8 +231,14 @@ document.addEventListener('DOMContentLoaded', () => {
     holdResults.innerHTML = `<strong>Drift:</strong> ${meanDrift.toFixed(2)} px • <strong>Freq:</strong> ${dominantFreq.toFixed(2)} Hz • <strong>Stability:</strong> ${stability}`;
     currentResult = currentResult || { id:'r_'+Date.now(), date:new Date().toISOString() };
     currentResult.hold = { meanDrift, dominantFreq, stability, samples: holdSamples };
+    // summary fields for charts
+    currentResult.avgAmplitude = Math.min(1, meanDrift / 50);
+    currentResult.dominantFreq = dominantFreq;
+
     summaryBox.innerHTML = `Hold: drift ${meanDrift.toFixed(2)} px, ${dominantFreq.toFixed(2)} Hz, stability ${stability}`;
     createAutoDoc(currentResult); prefillDocumentForm(currentResult); refreshDocsUI();
+    // Preview on charts
+    previewResultOnCharts(currentResult);
   }
   // track last pointer pos globally for hold sampling
   let lastPointerPos = null; document.addEventListener('pointermove', (e)=>{ lastPointerPos = { x:e.clientX, y:e.clientY }; });
@@ -287,11 +341,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!currentResult || !currentResult.id){ currentResult = { id:'r_' + Date.now(), date: new Date().toISOString(), duration:0, avgAmplitude:null, dominantFreq:null, power:0, tremorDetected:tremorFromTrace, samples:[], timestamps:[] }; }
     currentResult.trace = { accuracy, accPct, severityScore, severityLabel, meanMatchedDist, coverage, points:tracePoints };
     currentResult.tremorDetected = tremorFromTrace;
+    // Set summary fields for charts (estimate amplitude from meanMatchedDist)
+    currentResult.avgAmplitude = Math.min(1, (meanMatchedDist || 0) / 100);
+    if (typeof currentResult.dominantFreq !== 'number') currentResult.dominantFreq = currentResult.dominantFreq || 0;
 
     // Auto-generate document and pre-fill
     createAutoDoc(currentResult);
     prefillDocumentForm(currentResult);
     refreshDocsUI();
+    // Preview on charts (transient)
+    previewResultOnCharts(currentResult);
 
     // show result area
     resultBox.classList.remove('hidden');
@@ -299,10 +358,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Charts
   let ampChart = new Chart(ampCanvas, {
-    type: 'bar', data: { labels: [], datasets: [{ label: 'Avg amplitude', data: [], backgroundColor: 'rgba(45,108,223,0.6)' }] }, options: { responsive: true }
+    type: 'bar', data: { labels: [], datasets: [{ label: 'Avg amplitude', data: [], backgroundColor: 'rgba(6,182,212,0.72)' }] }, options: { responsive: true }
   });
   let freqChart = new Chart(freqCanvas, {
-    type: 'bar', data: { labels: [], datasets: [{ label: 'Dominant frequency (Hz)', data: [], backgroundColor: 'rgba(45,108,223,0.6)' }] }, options: { responsive: true }
+    type: 'bar', data: { labels: [], datasets: [{ label: 'Dominant frequency (Hz)', data: [], backgroundColor: 'rgba(6,182,212,0.72)' }] }, options: { responsive: true }
   });
 
   // Initialization
@@ -314,85 +373,109 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAttachOptions();
   renderCharts();
 
-  // Initialize home tests carousel
-  initCarousel();
+  // Initialize interactive hero background
+  initHeroBG();
+  // Apply per-letter variable width to hero title
+  applyVariableWidthTitle();
 
-  // Carousel initialization and handlers
-  function initCarousel(){
-    const carousel = document.querySelector('.carousel');
-    if (!carousel) return;
-    // prevent double-init (idempotent)
-    if (carousel.dataset.inited === 'true') return; carousel.dataset.inited = 'true';
-    const slidesWrap = carousel.querySelector('.carousel-slides');
-    const slides = Array.from(carousel.querySelectorAll('.carousel-slide'));
-    const prev = carousel.querySelector('.carousel-prev');
-    const next = carousel.querySelector('.carousel-next');
-    const indicatorsWrap = carousel.querySelector('.carousel-indicators');
-    let current = 0; let autoplay = null;
+  // Interactive hero background (particle canvas responsive to cursor)
+  function initHeroBG(){
+    const canvas = document.getElementById('heroBg');
+    console.debug && console.debug('initHeroBG: attempting to start');
+    if (!canvas) { console.debug && console.debug('initHeroBG: no canvas found'); return; }
+    if (canvas.dataset.inited === 'true') { console.debug && console.debug('initHeroBG: already inited'); return; } canvas.dataset.inited = 'true';
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { console.debug && console.debug('initHeroBG: reduced-motion active — skipping'); return; } // respect accessibility
 
-    // ensure clean indicators and full-width slides
-    indicatorsWrap.innerHTML = '';
-    slides.forEach((s, i) => {
-      s.style.flex = '0 0 100%';
-      const btn = document.createElement('button'); btn.className = 'indicator' + (i===0? ' active':''); btn.dataset.index = i; btn.setAttribute('aria-label', s.dataset.test || ('Slide ' + (i+1)));
-      indicatorsWrap.appendChild(btn);
-      btn.addEventListener('click', ()=> goToSlide(i));
-      s.addEventListener('click', ()=> {
-        const test = s.dataset.test;
-        if (test) {
-          const navBtn = document.querySelector('nav button[data-target="check"]'); if (navBtn) navBtn.click();
-          const testBtn = document.querySelector(`.test-tab[data-test="${test}"]`);
-          if (testBtn) testBtn.click();
-        }
-      });
-    });
+    const ctx = canvas.getContext('2d');
+    let dpr = window.devicePixelRatio || 1; let w = 0, h = 0; let raf = null;
+    let particles = [];
+    const mouse = {x:-9999, y:-9999, active:false};
+    let firstMouse = true;
 
-    // hide controls if only one slide
-    if (slides.length <= 1) {
-      if (prev) prev.style.display = 'none'; if (next) next.style.display = 'none'; indicatorsWrap.innerHTML = '';
+    function resize(){
+      w = canvas.clientWidth || Math.max(300, Math.round(canvas.offsetWidth)); h = canvas.clientHeight || Math.max(80, Math.round(canvas.offsetHeight));
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      initParticles();
+      console.debug && console.debug('initHeroBG resize', w, h, 'dpr', dpr);
+      // One-time faint fill to visualize area (will be cleared by loop immediately)
+      ctx.fillStyle = 'rgba(6,182,212,0.02)'; ctx.fillRect(0,0,w,h);
     }
 
-    // slide counter (helpful for debugging/visibility)
-    const existingCounter = carousel.querySelector('.carousel-counter');
-    let counter = existingCounter;
-    if (!counter) { counter = document.createElement('div'); counter.className = 'carousel-counter'; carousel.appendChild(counter); }
+    function initParticles(){
+      particles = [];
+      const area = Math.max(80000, w*h);
+      const count = Math.min(120, Math.round(area / 60000));
+      for (let i=0;i<count;i++){
+        particles.push({ x: Math.random()*w, y: Math.random()*h, vx:(Math.random()-0.5)*0.8, vy:(Math.random()-0.5)*0.8, r: 1.2 + Math.random()*3, alpha: 0.5 + Math.random()*0.5 });
+      }
+      console.debug && console.debug('initHeroBG particles', particles.length);
+    }
 
-    // Use a property on the DOM node for autoplay so it persists
-    carousel._autoplay = carousel._autoplay || null;
+    function onMove(e){ const r = canvas.getBoundingClientRect(); mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.active = true; if (firstMouse){ firstMouse=false; console.debug && console.debug('initHeroBG: mouse active', mouse.x, mouse.y); } }
+    function onLeave(){ mouse.active = false; mouse.x = -9999; mouse.y = -9999; }
 
-    console.debug('Carousel init: slides=', slides.length);
+    canvas.addEventListener('mousemove', onMove, {passive:true});
+    canvas.addEventListener('pointermove', onMove, {passive:true});
+    canvas.addEventListener('mouseleave', onLeave);
 
-    function update(){ const per = 100 / Math.max(1, slides.length); const shift = current * per; slidesWrap.style.transform = `translateX(-${shift}%)`; carousel.querySelectorAll('.indicator').forEach((b, idx)=> b.classList.toggle('active', idx===current)); slides.forEach((s, idx)=> s.classList.toggle('selected', idx===current)); if (counter) counter.textContent = `${current+1}/${slides.length}`; }
-    function nextSlide(){ current = (current + 1) % slides.length; update(); console.debug('Carousel next:', current); }
-    function prevSlide(){ current = (current - 1 + slides.length) % slides.length; update(); console.debug('Carousel prev:', current); }
+    let visible = true;
+    if ('IntersectionObserver' in window){
+      const heroEl = document.querySelector('.hero-spotlight');
+      const obs = new IntersectionObserver((entries)=>{ entries.forEach(en=>{ visible = en.isIntersecting; if (visible) start(); else stop(); }); }, {threshold: 0.05});
+      obs.observe(heroEl);
+    }
 
-    function update(){ slidesWrap.style.transform = `translateX(-${current * 100}%)`; carousel.querySelectorAll('.indicator').forEach((b, idx)=> b.classList.toggle('active', idx===current)); slides.forEach((s, idx)=> s.classList.toggle('selected', idx===current)); }
-    function nextSlide(){ current = (current + 1) % slides.length; update(); }
-    function prevSlide(){ current = (current - 1 + slides.length) % slides.length; update(); }
+    function start(){ if (raf) return; loop(); }
+    function stop(){ if (raf) { cancelAnimationFrame(raf); raf = null; } }
 
-    next && next.addEventListener('click', ()=>{ nextSlide(); resetAutoplay(); });
-    prev && prev.addEventListener('click', ()=>{ prevSlide(); resetAutoplay(); });
+    function loop(){ ctx.clearRect(0,0,w,h);
+      // update & draw particles
+      for (let i=0;i<particles.length;i++){
+        const p = particles[i];
+        if (mouse.active){ const dx = mouse.x - p.x, dy = mouse.y - p.y; const dist = Math.hypot(dx,dy); if (dist < 180){ const f = (1 - dist/180); p.vx += (dx / (dist||1)) * 0.08 * f; p.vy += (dy / (dist||1)) * 0.08 * f; } }
+        p.vx *= 0.94; p.vy *= 0.94; p.x += p.vx; p.y += p.vy;
+        if (p.x < -10) p.x = w+10; if (p.x > w+10) p.x = -10; if (p.y < -10) p.y = h+10; if (p.y > h+10) p.y = -10;
+        // draw glow
+        ctx.beginPath(); const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r*6); g.addColorStop(0, `rgba(6,182,212,${p.alpha})`); g.addColorStop(1, `rgba(6,182,212,0)`); ctx.fillStyle = g; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      }
+      // subtle lines
+      for (let i=0;i<particles.length;i++){
+        for (let j=i+1;j<particles.length;j++){ const a=particles[i], b=particles[j]; const dx=a.x-b.x, dy=a.y-b.y; const d2 = dx*dx+dy*dy; if (d2 < 14000){ const alpha = 0.14 * (1 - d2/14000); ctx.strokeStyle = `rgba(6,182,212,${alpha})`; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
+      }
+      raf = requestAnimationFrame(loop);
+    }
 
-    carousel.addEventListener('keydown', (e)=>{ if (e.key === 'ArrowRight') { nextSlide(); resetAutoplay(); } if (e.key === 'ArrowLeft'){ prevSlide(); resetAutoplay(); } });
-
-    function resetAutoplay(){ if (carousel._autoplay) clearInterval(carousel._autoplay); carousel._autoplay = setInterval(()=> nextSlide(), 4000); }
-    function pauseAutoplay(){ if (carousel._autoplay) { clearInterval(carousel._autoplay); carousel._autoplay = null; } }
-    // start autoplay slightly after init to avoid early pause races
-    setTimeout(()=> resetAutoplay(), 300);
-
-    // pause when pointer is over carousel
-    carousel.addEventListener('pointerenter', ()=>{ pauseAutoplay(); carousel.classList.add('hover'); });
-    carousel.addEventListener('pointerleave', ()=>{ resetAutoplay(); carousel.classList.remove('hover'); });
-
-    // touch swipe
-    let startX = null;
-    slidesWrap.addEventListener('pointerdown', (e)=>{ startX = e.clientX; });
-    slidesWrap.addEventListener('pointerup', (e)=>{ if (startX === null) return; const dx = e.clientX - startX; if (Math.abs(dx) > 40) { if (dx < 0) nextSlide(); else prevSlide(); resetAutoplay(); } startX = null; });
-
-    update();
+    // initial resize and start
+    window.addEventListener('resize', ()=>{ resize(); });
+    resize();
+    start();
   }
 
-  function goToSlide(i){ const carousel = document.querySelector('.carousel'); if (!carousel) return; const slidesWrap = carousel.querySelector('.carousel-slides'); const slides = Array.from(carousel.querySelectorAll('.carousel-slide')); i = Math.max(0, Math.min(slides.length-1, i)); slidesWrap.style.transform = `translateX(-${i * 100}%)`; carousel.querySelectorAll('.indicator').forEach((b, idx)=> b.classList.toggle('active', idx===i)); slides.forEach((s, idx)=> s.classList.toggle('selected', idx===i)); }
+  // Apply per-letter variable width to the hero title (idempotent)
+  function applyVariableWidthTitle(){
+    const el = document.querySelector('.hero-title');
+    if (!el) return;
+    if (el.dataset.vwInited === 'true') return; // already done
+    el.dataset.vwInited = 'true';
+    const text = (el.textContent || '').trim();
+    // clear and rebuild with spans per character
+    el.textContent = '';
+    for (let i=0;i<text.length;i++){
+      const ch = text[i];
+      const span = document.createElement('span');
+      span.className = 'hero-char';
+      if (ch === ' '){ span.innerHTML = '&nbsp;'; span.style.display='inline-block'; span.style.width='0.42em'; span.style.setProperty('--w', 1); }
+      else {
+        // deterministic per-letter variation using sine for pleasant pattern
+        const base = 0.98; const variance = 0.08; const val = base + Math.sin(i * 1.7) * variance;
+        span.style.setProperty('--w', val.toFixed(3)); span.textContent = ch;
+      }
+      el.appendChild(span);
+    }
+  }
+
+  // Carousel removed
 
   // Animate test views when they scroll into view
   (function setupViewAnimation(){
@@ -413,6 +496,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
     const pageEl = document.getElementById(target);
     pageEl.classList.remove('hidden');
+
+    // show/hide the hero so it appears only on Home
+    const heroEl = document.querySelector('.hero-spotlight');
+    if (heroEl) {
+      if (target === 'home') heroEl.classList.remove('hidden'); else heroEl.classList.add('hidden');
+    }
+
     // trigger entrance animation each time page is shown
     pageEl.classList.remove('animate-in'); void pageEl.offsetWidth; pageEl.classList.add('animate-in');
     // scroll page into view for smooth navigation
@@ -420,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
     if (btn) btn.classList.add('active');
     if (target === 'check') { generateSpiral(); drawSpiral(); }
-    if (target === 'home') { initCarousel(); }
   }
 
   // Allow any element with data-target to trigger navigation (e.g., hero buttons)
@@ -432,6 +521,75 @@ document.addEventListener('DOMContentLoaded', () => {
       if (navBtn) navBtn.click(); else navigate(target, null);
     }
   });
+
+  // Robust handlers for hero CTA buttons: add visual press feedback, stronger logs, and forced fallback navigation
+  (function attachHeroCTA(){
+    const ctas = Array.from(document.querySelectorAll('.hero-spotlight-cta button[data-target]'));
+    if (!ctas.length) return;
+    ctas.forEach(btn => {
+      if (!btn.getAttribute('type')) btn.setAttribute('type','button');
+
+      function showPress() { btn.classList.add('cta-pressed'); setTimeout(()=> btn.classList.remove('cta-pressed'), 180); }
+
+      btn.addEventListener('click', (e) => {
+        console.log('Hero CTA click ->', btn.dataset.target);
+        e.preventDefault();
+        showPress();
+
+        const target = btn.dataset.target;
+        const navBtn = document.querySelector(`nav button[data-target="${target}"]`);
+
+        // Try navigate() first
+        try {
+          navigate(target, navBtn);
+          console.log('Called navigate() for', target);
+        } catch (err) {
+          console.warn('navigate() threw an error for', target, err);
+        }
+
+        // Explicit page reveal and scroll (force)
+        const pageEl = document.getElementById(target);
+        if (pageEl) {
+          console.log('Found page element for', target, 'hidden?', pageEl.classList.contains('hidden'));
+          document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+          pageEl.classList.remove('hidden');
+          try { pageEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { console.warn('scrollIntoView failed', e); }
+          try { pageEl.setAttribute('tabindex', '-1'); pageEl.focus({preventScroll:true}); } catch (e) {}
+        } else {
+          console.warn('No page element with id=', target);
+        }
+
+        // Update nav active state
+        if (navBtn) { document.querySelectorAll('nav button').forEach(b => b.classList.remove('active')); navBtn.classList.add('active'); }
+
+        // Hash fallback: set the hash after a short delay to avoid interfering with scroll
+        try { setTimeout(()=> { if (!location.hash || location.hash.replace('#','') !== target) location.hash = '#' + target; }, 60); } catch (e) { console.warn('Failed to set hash', e); }
+
+        // Final safety: if after 120ms the page is still hidden, un-hide it again (helps race conditions)
+        setTimeout(()=>{
+          const p = document.getElementById(target);
+          if (p && p.classList.contains('hidden')){ console.warn('Fallback un-hiding page after timeout for', target); p.classList.remove('hidden'); try { p.scrollIntoView({behavior: 'smooth', block: 'start'}) } catch(e){} }
+        }, 120);
+      }, { passive: false });
+
+      // also support keyboard activation
+      btn.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+      });
+
+      // pointerdown quick visual feedback
+      btn.addEventListener('pointerdown', ()=> showPress(), { passive: true });
+    });
+  })();
+
+  // scroll hint (click or keyboard) — scrolls to the #home card
+  const scrollHintEl = document.querySelector('.scroll-hint');
+  if (scrollHintEl){
+    scrollHintEl.addEventListener('click', ()=>{
+      const home = document.getElementById('home'); if (home) home.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+    scrollHintEl.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); scrollHintEl.click(); }});
+  }
 
   // Target touch test (multi-target concurrent)
   const targetArea = document.getElementById('targetArea');
@@ -445,9 +603,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function clearAllTargetTimers(){ _spawnTimers.forEach(id=>clearTimeout(id)); _spawnTimers=[]; if (_finishTimer) { clearTimeout(_finishTimer); _finishTimer=null; } for (const v of _activeTargets.values()){ if (v.timer) clearInterval(v.timer); if (v.expire) clearTimeout(v.expire); if (v.el) v.el.remove(); } _activeTargets.clear(); }
 
-  function startTargetTest(){ if (targetActive) return; targetActive=true; targetsSpawned=0; hits=0; misses=0; reactionTimes=[]; targetResults.textContent='Running'; targetStatus.textContent='Preparing...'; startTarget.disabled=true; clearAllTargetTimers();
+  function startTargetTest(){ if (targetActive) return; targetActive=true; targetsSpawned=0; hits=0; misses=0; reactionTimes=[]; targetResults.textContent=`Hits: 0 • Misses: 0`; targetStatus.textContent='Preparing...'; startTarget.disabled=true; clearAllTargetTimers();
     const sessionDuration = 20000; // spawn window (ms)
-    const lifetime = 5000; // each target lasts 5s
+    const lifetime = 4000; // each target lasts 4s (user requirement)
 
     // schedule random spawn times across sessionDuration so targets appear at random times
     for (let i=0;i<targetTrials;i++){
@@ -484,12 +642,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (timer) clearInterval(timer);
         _activeTargets.delete(id);
         targetStatus.textContent = `Running (${targetsSpawned}/${targetTrials})`;
+        targetResults.textContent = `Hits: ${hits} • Misses: ${misses}`;
       }
     }, lifetime);
 
     // click handler
     const onHit = (ev)=>{
-      if (!targetActive) return;
+      if (!targetActive) return; if (!_activeTargets.has(id)) return; // ignore if already expired or handled
       const rt = Date.now() - spawnAt; reactionTimes.push(rt); hits++;
       // cleanup
       if (timer) clearInterval(timer); if (expire) clearTimeout(expire);
@@ -497,6 +656,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el) el.remove();
       _activeTargets.delete(id);
       targetStatus.textContent = `Running (${targetsSpawned}/${targetTrials})`;
+      targetResults.textContent = `Hits: ${hits} • Misses: ${misses}`;
     };
     el.addEventListener('pointerdown', onHit, { passive:true });
 
@@ -512,8 +672,13 @@ document.addEventListener('DOMContentLoaded', () => {
     targetResults.innerHTML = `<strong>Mean RT:</strong> ${mean.toFixed(0)} ms • <strong>Miss rate:</strong> ${missRate}% • <strong>Hits:</strong> ${hits}`;
     currentResult = currentResult || { id:'r_'+Date.now(), date:new Date().toISOString() };
     currentResult.target = { reactionTimes, misses, missRate, meanRT:mean, hits };
+    // summary numeric fields
+    currentResult.avgAmplitude = Math.min(1, missRate / 100);
+    currentResult.dominantFreq = mean > 0 ? (1000 / mean) : 0; // mean RT -> approx frequency (Hz)
     summaryBox.innerHTML = `Target: ${Math.round(mean)} ms mean, ${missRate}% misses, ${hits} hits`;
     createAutoDoc(currentResult); prefillDocumentForm(currentResult); refreshDocsUI();
+    // Preview on charts
+    previewResultOnCharts(currentResult);
   }
 
   startTarget && startTarget.addEventListener('click', ()=>{ startTargetTest(); });
@@ -523,22 +688,96 @@ document.addEventListener('DOMContentLoaded', () => {
   // Timed repetition test
   const repCanvas = document.getElementById('repCanvas'); const repCtx = repCanvas && repCanvas.getContext('2d'); const startRep = document.getElementById('startRep'); const stopRep = document.getElementById('stopRep'); const repResults = document.getElementById('repResults');
   let repActive=false; let repStrokes=[]; let repStrokePoints=[]; let repTimer=null;
-  repCanvas && repCanvas.addEventListener('pointerdown', (e)=>{ if (!repActive) return; repCanvas.setPointerCapture(e.pointerId); repStrokePoints=[pointFromLineEvent(e)]; repCtx.beginPath(); repCtx.moveTo(repStrokePoints[0].x, repStrokePoints[0].y); repCtx._last = repStrokePoints[0]; });
-  repCanvas && repCanvas.addEventListener('pointermove', (e)=>{ if (!repActive || !repStrokePoints) return; const p=pointFromLineEvent(e); repStrokePoints.push(p); repCtx.lineTo(p.x,p.y); repCtx.strokeStyle='#2d6cdf'; repCtx.lineWidth=4; repCtx.stroke(); });
+  // Repetition targets
+  let repTargets = []; // {cx,cy,r}
+
+  function pointFromRepEvent(e){ if(!repCanvas) return {x:0,y:0,t:Date.now()}; const r=repCanvas.getBoundingClientRect(); return { x:(e.clientX-r.left)*(repCanvas.width/r.width), y:(e.clientY-r.top)*(repCanvas.height/r.height), t:Date.now() }; }
+
+  function generateRepTargets(n=5){ repTargets = []; if (!repCanvas) return; const w = repCanvas.width, h = repCanvas.height; let attempts=0; while(repTargets.length < n && attempts < n*8){ attempts++; const r = 30 + Math.round(Math.random()*50); const cx = r + Math.random()*(w - r*2); const cy = r + Math.random()*(h - r*2);
+      // avoid heavy overlap
+      let ok = true; for (const t of repTargets){ const d = Math.hypot(t.cx-cx, t.cy-cy); if (d < (t.r + r + 12)) { ok = false; break; } }
+      if (ok) repTargets.push({cx,cy,r}); }
+    // if still short, allow overlap by filling remaining with randoms
+    while(repTargets.length < n){ const r = 30 + Math.round(Math.random()*50); const cx = r + Math.random()*(w - r*2); const cy = r + Math.random()*(h - r*2); repTargets.push({cx,cy,r}); }
+  }
+
+  function drawRepTargets(highlights){ // highlights: Map index -> accuracy (0-100) or 'miss'
+    if (!repCtx) return; // clear background area
+    repCtx.clearRect(0,0,repCanvas.width, repCanvas.height);
+    // semi-transparent outlines
+    repTargets.forEach((t, idx)=>{
+      const acc = highlights && highlights.has && highlights.get && highlights.get(idx);
+      if (acc === 'miss') { repCtx.strokeStyle = 'rgba(220,38,38,0.9)'; repCtx.lineWidth = 3; }
+      else if (typeof acc === 'number') { repCtx.strokeStyle = 'rgba(34,197,94,0.9)'; repCtx.lineWidth = 3; }
+      else { repCtx.strokeStyle = 'rgba(6,182,212,0.22)'; repCtx.lineWidth = 3; }
+      repCtx.beginPath(); repCtx.arc(t.cx, t.cy, t.r, 0, Math.PI*2); repCtx.stroke();
+      // small label
+      repCtx.fillStyle = 'rgba(6,182,212,0.12)'; repCtx.fillRect(t.cx-16, t.cy-10, 32, 20);
+      repCtx.fillStyle = 'rgba(6,182,212,0.9)'; repCtx.font = '12px ' + (document.body.style.fontFamily || 'sans-serif'); repCtx.textAlign = 'center'; repCtx.textBaseline = 'middle'; repCtx.fillText((idx+1).toString(), t.cx, t.cy);
+    });
+  }
+
+  repCanvas && repCanvas.addEventListener('pointerdown', (e)=>{ if (!repActive) return; repCanvas.setPointerCapture(e.pointerId); repStrokePoints=[pointFromRepEvent(e)]; repCtx.beginPath(); repCtx.moveTo(repStrokePoints[0].x, repStrokePoints[0].y); repCtx._last = repStrokePoints[0]; });
+  repCanvas && repCanvas.addEventListener('pointermove', (e)=>{ if (!repActive || !repStrokePoints) return; const p=pointFromRepEvent(e); repStrokePoints.push(p); repCtx.lineTo(p.x,p.y); repCtx.strokeStyle='#2d6cdf'; repCtx.lineWidth=4; repCtx.stroke(); });
   repCanvas && repCanvas.addEventListener('pointerup', (e)=>{ if (!repActive) return; if (repStrokePoints && repStrokePoints.length>8){ repStrokes.push(repStrokePoints.slice()); } repStrokePoints=null; });
-  startRep && startRep.addEventListener('click', ()=>{ repActive=true; repStrokes=[]; startRep.disabled=true; stopRep.disabled=false; repResults.textContent='Running 20s'; const start=Date.now(); repTimer=setTimeout(()=>{ stopRep && stopRep.click(); }, 20000); });
-  stopRep && stopRep.addEventListener('click', ()=>{ repActive=false; startRep.disabled=false; stopRep.disabled=true; if (repTimer) clearTimeout(repTimer); // analyze strokes
-    if (repStrokes.length===0) return repResults.textContent='No circles drawn';
-    // compute circularity per stroke
-    function circularity(points){ const cx = points.reduce((s,p)=>s+p.x,0)/points.length; const cy = points.reduce((s,p)=>s+p.y,0)/points.length; const rs = points.map(p=>Math.hypot(p.x-cx,p.y-cy)); const rmean = rs.reduce((s,v)=>s+v,0)/rs.length; const rv = Math.sqrt(rs.reduce((s,v)=>(s+(v-rmean)*(v-rmean)),0)/rs.length); return Math.max(0,1 - (rv / (rmean || 1))); }
-    const qualities = repStrokes.map(s=>circularity(s));
-    const avgQ = qualities.reduce((s,v)=>s+v,0)/qualities.length; // decay slope (first vs last)
-    const first = qualities.slice(0,Math.ceil(qualities.length/2)); const last = qualities.slice(Math.floor(qualities.length/2)); const decay = (first.reduce((s,v)=>s+v,0)/first.length) - (last.reduce((s,v)=>s+v,0)/last.length);
-    repResults.innerHTML = `<strong>Avg quality:</strong> ${ (avgQ*100).toFixed(1) }% • <strong>Decay:</strong> ${ (decay*100).toFixed(1) }%`;
+
+  repCanvas && repCanvas.addEventListener('pointerup', (e)=>{ if (!repActive) return; if (repStrokePoints && repStrokePoints.length>8){ repStrokes.push(repStrokePoints.slice()); } repStrokePoints=null; });
+  startRep && startRep.addEventListener('click', ()=>{ // generate visible target guides and run for 20s
+    repActive=true; repStrokes=[]; startRep.disabled=true; stopRep.disabled=false; repResults.textContent='Running 20s';
+    // generate 5 targets, draw them as semi-transparent outlines
+    generateRepTargets(5); drawRepTargets();
+    const start=Date.now(); repTimer=setTimeout(()=>{ stopRep && stopRep.click(); }, 20000);
+  });
+  stopRep && stopRep.addEventListener('click', ()=>{ repActive=false; startRep.disabled=false; stopRep.disabled=true; if (repTimer) clearTimeout(repTimer);
+    if (repStrokes.length===0) { repResults.textContent='No circles drawn'; drawRepTargets(); return; }
+
+    // Map strokes to targets and compute accuracy per target (0-100)
+    const perTargetBest = new Map(); // idx -> bestAccuracy
+
+    repStrokes.forEach((stroke) => {
+      // compute stroke stats: average distance of points to each target center
+      const scores = repTargets.map((t, idx) => {
+        const ds = stroke.map(p => Math.hypot(p.x - t.cx, p.y - t.cy));
+        const avgDist = ds.reduce((s,v)=>s+v,0)/ds.length;
+        const meanAbsError = ds.map(d=>Math.abs(d - t.r)).reduce((s,v)=>s+v,0)/ds.length;
+        const normalized = meanAbsError / (t.r || 1);
+        const accuracy = Math.max(0, 1 - normalized) * 100; // clamp
+        return { idx, accuracy, avgDist, meanAbsError };
+      });
+      // select target with minimal meanAbsError (or maximal accuracy)
+      scores.sort((a,b)=> b.accuracy - a.accuracy);
+      const best = scores[0];
+      // keep the best accuracy per target (avoid double counting)
+      const prev = perTargetBest.get(best.idx) || 0;
+      if (best.accuracy > prev) perTargetBest.set(best.idx, best.accuracy);
+    });
+
+    // compute results
+    const tracedTargets = Array.from(perTargetBest.keys()).length;
+    const totalTargets = repTargets.length;
+    const avgAccuracy = tracedTargets ? (Array.from(perTargetBest.values()).reduce((s,v)=>s+v,0)/tracedTargets) : 0;
+    const missed = totalTargets - tracedTargets;
+
+    // mark misses
+    const highlights = new Map();
+    for (let i=0;i<totalTargets;i++){
+      if (perTargetBest.has(i)) highlights.set(i, Math.round(perTargetBest.get(i)));
+      else highlights.set(i, 'miss');
+    }
+    drawRepTargets(highlights);
+
+    repResults.innerHTML = `<strong>Accuracy:</strong> ${avgAccuracy.toFixed(1)}% • <strong>Targets:</strong> ${tracedTargets}/${totalTargets} • <strong>Missed:</strong> ${missed}`;
+
     currentResult = currentResult || { id:'r_'+Date.now(), date:new Date().toISOString() };
-    currentResult.repetition = { qualities, avgQ, decay };
-    summaryBox.innerHTML = `Repetition: avg ${(avgQ*100).toFixed(1)}%, decay ${(decay*100).toFixed(1)}%`;
-    createAutoDoc(currentResult); prefillDocumentForm(currentResult); refreshDocsUI(); });
+    currentResult.repetition = { repTargets, perTargetBest: Object.fromEntries(perTargetBest), avgAccuracy, tracedTargets };
+    // set summary numeric fields
+    currentResult.avgAmplitude = Math.min(1, 1 - (avgAccuracy / 100));
+    currentResult.dominantFreq = currentResult.dominantFreq || 0;
+    summaryBox.innerHTML = `Repetition: ${avgAccuracy.toFixed(1)}% accuracy, ${tracedTargets}/${totalTargets} targets`;
+    createAutoDoc(currentResult); prefillDocumentForm(currentResult); refreshDocsUI();
+    // Preview on charts
+    previewResultOnCharts(currentResult);
+  });
 
   // Capture
   async function startCapture() {
@@ -665,10 +904,38 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Save result
+  // Ensure a result has numeric fields needed for charts (avgAmplitude, dominantFreq, duration)
+  function normalizeResultForCharts(r){
+    if (!r) return r;
+    if (typeof r.duration !== 'number') r.duration = r.duration || 0;
+
+    // avgAmplitude heuristics: pick a sensible metric from the tests
+    if (r.avgAmplitude === null || r.avgAmplitude === undefined){
+      if (r.hold && typeof r.hold.meanDrift === 'number') r.avgAmplitude = Math.min(1, r.hold.meanDrift / 50);
+      else if (r.trace && typeof r.trace.meanMatchedDist === 'number') r.avgAmplitude = Math.min(1, r.trace.meanMatchedDist / 100);
+      else if (r.repetition && typeof r.repetition.avgAccuracy === 'number') r.avgAmplitude = Math.min(1, 1 - (r.repetition.avgAccuracy / 100));
+      else if (r.tapping && typeof r.tapping.std === 'number') r.avgAmplitude = Math.min(1, r.tapping.std / 0.5);
+      else r.avgAmplitude = 0.05; // default small value
+    }
+
+    // dominantFreq heuristics
+    if (r.dominantFreq === null || r.dominantFreq === undefined){
+      if (r.hold && typeof r.hold.dominantFreq === 'number') r.dominantFreq = r.hold.dominantFreq;
+      else r.dominantFreq = 0;
+    }
+
+    // coerce numeric types
+    r.avgAmplitude = Number(r.avgAmplitude) || 0;
+    r.dominantFreq = Number(r.dominantFreq) || 0;
+    return r;
+  }
+
   function saveCurrentResult() {
     if (!currentResult) return alert('No result to save');
+    // normalize to ensure charts can use it
+    const r = normalizeResultForCharts(Object.assign({}, currentResult));
     const saved = loadResults();
-    saved.unshift(currentResult);
+    saved.unshift(r);
     localStorage.setItem('tremor_results', JSON.stringify(saved));
     refreshSessionsUI();
     updateAttachOptions();
@@ -823,11 +1090,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const saved = loadResults();
     const labels = saved.map(s=> new Date(s.date).toLocaleDateString());
     ampChart.data.labels = labels;
-    ampChart.data.datasets[0].data = saved.map(s=> s.avgAmplitude.toFixed(3));
+    ampChart.data.datasets[0].data = saved.map(s=> Number(s.avgAmplitude || 0).toFixed(3));
     ampChart.update();
 
     freqChart.data.labels = labels;
-    freqChart.data.datasets[0].data = saved.map(s=> s.dominantFreq.toFixed(2));
+    freqChart.data.datasets[0].data = saved.map(s=> Number(s.dominantFreq || 0).toFixed(2));
+    freqChart.update();
+  }
+
+  // Preview the current (unsaved) result on the charts without persisting
+  function previewResultOnCharts(r){
+    if (!r) return;
+    const saved = loadResults();
+    const preview = normalizeResultForCharts(Object.assign({}, r));
+    const previewLabel = preview.date ? new Date(preview.date).toLocaleDateString() : 'Now';
+
+    const labels = [previewLabel].concat(saved.map(s=> new Date(s.date).toLocaleDateString()));
+    ampChart.data.labels = labels;
+    ampChart.data.datasets[0].data = [preview.avgAmplitude.toFixed(3)].concat(saved.map(s=> s.avgAmplitude.toFixed(3)));
+    ampChart.update();
+
+    freqChart.data.labels = labels;
+    freqChart.data.datasets[0].data = [preview.dominantFreq.toFixed(2)].concat(saved.map(s=> s.dominantFreq.toFixed(2)));
     freqChart.update();
   }
 

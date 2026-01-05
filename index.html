@@ -6,6 +6,13 @@
   <meta name="theme-color" content="#ffffff">
   <title>TremorTrack</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Notable&family=Victor+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+  <!-- Additional families for site UI: Open Sans + Noto Sans (used as the main body font) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Notable&family=Noto+Sans:ital,wght@0,100..900;1,100..900&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Victor+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -17,27 +24,62 @@
       <button data-target="check">Check Tremor</button>
       <button data-target="document">Document Results</button>
       <button data-target="visualize">Visualize Results</button>
+      <button id="themeToggle" type="button" class="outline" aria-pressed="false" title="Toggle light / dark theme">
+        <img id="themeIcon" src="images/theme-light.svg" alt="Toggle theme" width="18" height="18" />
+        <span class="sr-only">Toggle light / dark theme</span>
+      </button>
     </nav>
   </header>
 
   <main>
-    <section id="home" class="page">
-      <div class="hero">
-        <div class="hero-text">
-          <h2>TremorTrack</h2>
-          <p class="lead">Small tremors. Big daily challenges.</p>
-        </div>
-        <div class="hero-art" aria-hidden="true">
-          <svg width="220" height="140" viewBox="0 0 220 140" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true">
-            <rect x="0" y="0" width="220" height="140" rx="12" fill="#eef5ff"/>
-            <path d="M10 100 C40 40, 80 40, 110 100 C140 160, 180 60, 210 100" stroke="#2d6cdf" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.9"/>
-          </svg>
+    <!-- Left-aligned hero spotlight (large, bold, left side) -->
+    <section class="hero-spotlight" aria-label="TremorTrack overview">
+      <div class="hero-spotlight-inner">
+        <!-- Canvas background (interactive particles) -->
+        <canvas id="heroBg" class="hero-bg" aria-hidden="true"></canvas>
+        <div class="hero-spotlight-text">
+          <h1 class="hero-title">TremorTrack</h1>
+          <p class="hero-sub">Small tremors. Big daily challenges.</p>
+          <div class="hero-spotlight-cta">
+            <button type="button" class="primary" data-target="check">Start a quick test</button>
+            <button type="button" class="outline" data-target="document">Document a Note</button>
+          </div>
+
+          <!-- Scroll hint to guide users to the content card below -->
+          <div class="scroll-hint" role="button" tabindex="0" aria-label="Scroll down to read more">
+            <span>Scroll down for more info</span>
+            <svg class="scroll-arrow" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+              <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+          </div>
         </div>
       </div>
+    </section>
 
+    <section id="home" class="page">
+      <!-- content card (hero moved to banner above) -->
       <div class="home-info">
-        <h3>Small tremors. Big daily challenges.</h3>
         <p>Early signs of Parkinson’s often appear as small changes in hand movement and control. This platform offers a simple, software-based way to observe and visualize motor patterns. Subtle motor changes shouldn’t go unnoticed.</p>
+
+        <!-- Flash cards (placeholders) -->
+        <div class="flash-cards" aria-label="Highlights">
+          <article class="flash-card" role="article">
+            <h5>Simple Tests</h5>
+            <p class="small">Quick interactions you can do in a minute to monitor changes over time.</p>
+          </article>
+          <article class="flash-card" role="article">
+            <h5>Automatic Analysis</h5>
+            <p class="small">Results are summarized and visualized to help you spot trends.</p>
+          </article>
+          <article class="flash-card" role="article">
+            <h5>Save & Compare</h5>
+            <p class="small">Save sessions and view changes across dates in the Visualize tab.</p>
+          </article>
+          <article class="flash-card" role="article">
+            <h5>Secure & Private</h5>
+            <p class="small">Your session data stays on your device unless you choose to share it.</p>
+          </article>
+        </div>
 
         <h4>Why This Matters</h4>
         <p>Parkinson’s disease often begins with changes that are easy to overlook — mild tremors, reduced control, or slower movement. Timely awareness can help individuals seek medical guidance earlier and better understand changes in motor function over time.</p>
@@ -51,35 +93,6 @@
           <li>Movement patterns are automatically analyzed and visualized to highlight potential irregularities</li>
         </ul>
 
-        <!-- Carousel showcasing tests -->
-        <div class="home-carousel">
-          <div class="carousel" role="region" aria-roledescription="carousel" aria-label="Tests showcase" tabindex="0">
-            <div class="carousel-slides">
-              <figure class="carousel-slide" data-test="linetrace">
-                <img class="carousel-img" src="images/line-tracing.svg" alt="Line Tracing Test">
-                <figcaption><strong>Line Tracing</strong><div class="carousel-desc">Trace the line accurately and smoothly</div></figcaption>
-              </figure>
-
-              <figure class="carousel-slide" data-test="target">
-                <img class="carousel-img" src="images/target-touch.svg" alt="Target Touch Test">
-                <figcaption><strong>Target Touch</strong><div class="carousel-desc">Tap appearing targets quickly and accurately</div></figcaption>
-              </figure>
-
-              <figure class="carousel-slide" data-test="repetition">
-                <img class="carousel-img" src="images/timed-repetition.svg" alt="Timed Repetition Test">
-                <figcaption><strong>Timed Repetition</strong><div class="carousel-desc">Repeated circles measure consistency and speed</div></figcaption>
-              </figure>
-
-              <figure class="carousel-slide" data-test="tapping">
-                <img class="carousel-img" src="images/finger-tapping.svg" alt="Finger Tapping Test">
-                <figcaption><strong>Finger Tapping</strong><div class="carousel-desc">Alternating taps measure speed and rhythm</div></figcaption>
-              </figure>
-            </div>
-            <button class="carousel-prev" aria-label="Previous slide">‹</button>
-            <button class="carousel-next" aria-label="Next slide">›</button>
-            <div class="carousel-indicators" role="tablist" aria-hidden="false"></div>
-          </div>
-        </div>
 
         <h4>Who It’s For</h4>
         <ul class="who">
@@ -93,10 +106,7 @@
           <p>This tool is intended for screening and motor symptom monitoring only. It is not a medical device and does not provide a clinical diagnosis. Please consult a qualified healthcare professional for medical advice.</p>
         </div>
 
-        <div class="home-cta" style="margin-top:12px">
-          <button class="primary" data-target="check">Start a quick test</button>
-          <button class="outline" data-target="document">Document a Note</button>
-        </div>
+
       </div>
     </section>
 
